@@ -26,3 +26,11 @@ class DynefSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dynef
         fields =['prix', 'date_debut','date_fin']
+
+from rest_framework import serializers
+from .models import TotalEnergie
+
+class TotalEnergieSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TotalEnergie
+        fields = ['id', 'prix', 'date_debut', 'date_fin']

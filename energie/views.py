@@ -1,26 +1,15 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .serializers import CompteSerializer
-from .serializers import SocieteSerializer
-from .serializers import DynefSerializer
+from .serializers import *
 from rest_framework import generics
-from .models import Societe
-from .models import Compte
-from .models import Compteur
-from .models import HistoriqueCalcul
-from .models import TotalEnergie
-from .models import Dynef
+from .models import *
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import RetrieveAPIView
-from .serializers import CompteurSerializer
-from datetime import datetime
-import os
-from django.conf import settings
-from .data_import import import_total_energie_from_xml, import_dynef_from_csv
-import csv
-import io
+from .data_import import *
+from django.http import HttpResponse
 
+#creation d'un compte
 class CreerCompteView(generics.CreateAPIView,generics.ListAPIView):
     queryset = Compte.objects.all()
     serializer_class = CompteSerializer
@@ -34,7 +23,7 @@ class CreerCompteView(generics.CreateAPIView,generics.ListAPIView):
 
 
 
-
+#ajout d'une societe
 class CreateSocieteView(generics.CreateAPIView,generics.ListAPIView):
     queryset = Societe.objects.all()
     serializer_class = SocieteSerializer
@@ -50,20 +39,21 @@ class CreateSocieteView(generics.CreateAPIView,generics.ListAPIView):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
+#Obtenir toutes les sociétés par compte
 class SocieteListByCompteView(generics.ListAPIView):
     serializer_class = SocieteSerializer
 
     def get_queryset(self):
         compte = get_object_or_404(Compte, id=self.kwargs['compte_id'])
         return Societe.objects.filter(compte=compte)
+#Obtenir une société par son Siret
 class SocieteRetrieveAPIView(RetrieveAPIView):
     queryset = Societe.objects.all()
     serializer_class = SocieteSerializer
     lookup_field = 'siret'
 
 
-
+#Ajouter un compteur à une société
 class AddCompteurView(generics.CreateAPIView,generics.ListAPIView):
     serializer_class = CompteurSerializer
     def get_queryset(self):
@@ -75,7 +65,7 @@ class AddCompteurView(generics.CreateAPIView,generics.ListAPIView):
             serializer.save(societe=societe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+#Obtenir la liste des compteurs par Société
 class CompteurListView(generics.ListAPIView):
     serializer_class = CompteurSerializer
 
@@ -84,7 +74,7 @@ class CompteurListView(generics.ListAPIView):
         societe = get_object_or_404(Societe, siret=self.kwargs['siret'])
         # Return a queryset of all the Compteurs related to the societe object
         return Compteur.objects.filter(societe=societe)
-
+#Obtenir la liste des compteurs par compte
 class CompteurListByCompte(generics.ListAPIView):
     serializer_class = CompteurSerializer
 
@@ -92,6 +82,7 @@ class CompteurListByCompte(generics.ListAPIView):
         compte_id = self.kwargs['compte_id']
         queryset = Compteur.objects.filter(societe__compte=compte_id)
         return queryset
+#Obtenir le prix d'un contrat d'énergie
 class PrixContratView(generics.ListAPIView):
    def get(self, request, *args, **kwargs):
         siret = kwargs.get('siret')
@@ -119,36 +110,28 @@ class PrixContratView(generics.ListAPIView):
         historique.save()
 
         return JsonResponse({'prix_contrat': prix_contrat})
-from django.http import HttpResponse
-
-
-
-class DynefImportView(generics.CreateAPIView, generics.ListAPIView):
-    queryset = Dynef.objects.all()
-    serializer_class = DynefSerializer
+class TotalEnergieImportView(generics.CreateAPIView):
+    serializer_class = TotalEnergieSerializer
 
     def post(self, request, format=None):
-        file = '/home/maysa/Dyneff.csv'
-        filename = file.name
+        file_path = request.FILES['file']
+        try:
+            import_total_energie_from_xml(file_path)
+            return Response({'success': 'File imported successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Check if the uploaded file is a CSV file
-        if not filename.endswith('.csv'):
-            return Response({'error': 'Invalid file format. Please upload a CSV file.'}, 
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # Decode the uploaded file and read the CSV data
-        file_data = file.read().decode('utf-8')
-        csv_data = csv.reader(file_data.splitlines(), delimiter=',')
-
-        # Iterate over each row in the CSV data and save to database
-        for row in csv_data:
-            dynef = Dynef(
-                prix=row['prix'],
-                date_debut=row['Date Debut'],
-                date_fin=row['Date Fin']
-            )
-            dynef.save()
-
-        return Response({'message': 'CSV file imported successfully.'}, status=status.HTTP_201_CREATED)
-
-
+class DynefImportView(APIView):
+   
+    def post(self, request, format=None):
+        file = request.FILES.get('file')
+        if file is None:
+            return Response({'error': 'No file was attached.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        
+        try:
+            import_dynef_from_csv(file)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({'success': 'File imported successfully.'}, status=status.HTTP_201_CREATED)

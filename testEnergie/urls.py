@@ -15,13 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from energie.views import CreerCompteView
-from energie.views import CreateSocieteView
-from energie.views import SocieteListByCompteView
-from energie.views import SocieteRetrieveAPIView
-from energie.views import AddCompteurView
-from energie.views import CompteurListView
-from energie.views import CompteurListByCompte,PrixContratView,DynefImportView
+from energie.views import *
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('comptes/', CreerCompteView.as_view(), name='creer_compte'),
@@ -33,4 +27,5 @@ urlpatterns = [
     path('comptes/<int:compte_id>/compteurs/', CompteurListByCompte.as_view(), name='compteur-list-by-compte'),
     path('prix_contrat/<str:siret>/<str:num_compteur>/<str:date_debut>/<str:date_fin>/<str:type_energie>/', PrixContratView.as_view(), name='prix_contrat'),
     path('import/', DynefImportView.as_view(), name='dynef_import'),
+    path('importxml/',TotalEnergieImportView.as_view(),name='totalenergie_import'),
 ]
