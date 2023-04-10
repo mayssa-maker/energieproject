@@ -7,9 +7,9 @@ def import_total_energie_from_xml(file_path):
     tree = ET.parse(file_path)
     root = tree.getroot()
     for elem in root:
-        prix = float(elem.find('prix').text)
-        date_debut = datetime.strptime(elem.find('Date Debut').text, '%d/%m/%Y').date()
-        date_fin = datetime.strptime(elem.find('Date Fin').text, '%d/%m/%Y').date()
+        prix = float(elem.find('prix').text.replace(',', '.'))
+        date_debut = datetime.strptime(elem.find('DateDebut').text, '%d/%m/%Y').date()
+        date_fin = datetime.strptime(elem.find('DateFin').text, '%d/%m/%Y').date()
         total_energie = TotalEnergie(prix=prix, date_debut=date_debut, date_fin=date_fin)
         total_energie.save()
 
