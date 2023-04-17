@@ -5,6 +5,7 @@ from .models import Societe
 from .models import Compteur,Dynef
 class CompteSerializer(serializers.ModelSerializer):
     class Meta:
+        societe= serializers.PrimaryKeyRelatedField(queryset= Societe.objects.all(),many=False)
         model = Compte
         fields = ['id', 'email', 'nom', 'prenom', 'password', 'societe']
         read_only_fields = ['id']

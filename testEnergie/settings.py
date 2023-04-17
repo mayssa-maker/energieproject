@@ -131,3 +131,4 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
+AUTH_USER_MODEL = 'energie.Compte'
