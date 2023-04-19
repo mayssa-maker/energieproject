@@ -66,6 +66,7 @@ class SocieteListByCompteView(generics.ListAPIView):
 class SocieteRetrieveAPIView(RetrieveAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+
     queryset = Societe.objects.all()
     serializer_class = SocieteSerializer
     lookup_field = 'siret'
@@ -100,6 +101,9 @@ class CompteurListView(generics.ListAPIView):
         return Compteur.objects.filter(societe=societe)
 #Obtenir la liste des compteurs par compte
 class CompteurListByCompte(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     serializer_class = CompteurSerializer
 
     def get_queryset(self):
@@ -110,6 +114,7 @@ class CompteurListByCompte(generics.ListAPIView):
 class PrixContratView(generics.ListAPIView):
    authentication_classes = [TokenAuthentication]
    permission_classes = [IsAuthenticated]
+
    def get(self, request, *args, **kwargs):
         siret = kwargs.get('siret')
         num_compteur = kwargs.get('num_compteur')
@@ -139,6 +144,7 @@ class PrixContratView(generics.ListAPIView):
 class TotalEnergieImportView(generics.CreateAPIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+
     serializer_class = TotalEnergieSerializer
 
     def post(self, request, format=None):
@@ -152,6 +158,7 @@ class TotalEnergieImportView(generics.CreateAPIView):
 class DynefImportView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
+    
     def post(self, request, format=None):
         file = request.FILES.get('file')
         if file is None:
