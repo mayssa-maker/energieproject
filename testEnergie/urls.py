@@ -28,4 +28,6 @@ urlpatterns = [
     path('prix_contrat/<str:siret>/<str:num_compteur>/<str:date_debut>/<str:date_fin>/<str:type_energie>/', PrixContratView.as_view(), name='prix_contrat'),
     path('import/', DynefImportView.as_view(), name='dynef_import'),
     path('importxml/',TotalEnergieImportView.as_view(),name='totalenergie_import'),
+    path('login/', LoginView.as_view(), name='api_login'),
+    path('logout/', CustomLogout.as_view(), name='api_logout'),
 ]

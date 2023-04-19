@@ -2,12 +2,14 @@ from rest_framework import serializers
 from .models import Compte
 from rest_framework import serializers
 from .models import Societe
-from .models import Compteur,Dynef
+from .models import Compteur,Dyneff
+from rest_framework import serializers
+from .models import TotalEnergie
 class CompteSerializer(serializers.ModelSerializer):
     class Meta:
-        societe= serializers.PrimaryKeyRelatedField(queryset= Societe.objects.all(),many=False)
+       
         model = Compte
-        fields = ['id', 'email', 'nom', 'prenom', 'password', 'societe']
+        fields = ['id', 'email', 'nom', 'prenom', 'password']
         read_only_fields = ['id']
 
 
@@ -25,11 +27,8 @@ class CompteurSerializer(serializers.ModelSerializer):
 
 class DynefSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Dynef
+        model = Dyneff
         fields =['prix', 'date_debut','date_fin']
-
-from rest_framework import serializers
-from .models import TotalEnergie
 
 class TotalEnergieSerializer(serializers.ModelSerializer):
     class Meta:

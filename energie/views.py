@@ -7,24 +7,37 @@ from .models import *
 from django.shortcuts import get_object_or_404
 from rest_framework.generics import RetrieveAPIView
 from .data_import import *
-from django.http import HttpResponse
-
+from django.http import HttpResponse, JsonResponse
+from rest_framework.authtoken.models import Token
+from django.contrib.auth import authenticate
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.hashers import make_password
 #creation d'un compte
 class CreerCompteView(generics.CreateAPIView,generics.ListAPIView):
     queryset = Compte.objects.all()
     serializer_class = CompteSerializer
 
+
     def post(self, request):
         serializer = CompteSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
+            compte = serializer.save(password=make_password(serializer.validated_data['password']))
+            response_data = {
+                'id': compte.id,
+                'email': compte.email,
+                'nom': compte.nom,
+                'prenom': compte.prenom
+            }
+            return Response(response_data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 #ajout d'une societe
 class CreateSocieteView(generics.CreateAPIView,generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated] 
+
     queryset = Societe.objects.all()
     serializer_class = SocieteSerializer
 
@@ -41,6 +54,9 @@ class CreateSocieteView(generics.CreateAPIView,generics.ListAPIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 #Obtenir toutes les sociétés par compte
 class SocieteListByCompteView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]  
+
     serializer_class = SocieteSerializer
 
     def get_queryset(self):
@@ -48,6 +64,8 @@ class SocieteListByCompteView(generics.ListAPIView):
         return Societe.objects.filter(compte=compte)
 #Obtenir une société par son Siret
 class SocieteRetrieveAPIView(RetrieveAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     queryset = Societe.objects.all()
     serializer_class = SocieteSerializer
     lookup_field = 'siret'
@@ -55,6 +73,9 @@ class SocieteRetrieveAPIView(RetrieveAPIView):
 
 #Ajouter un compteur à une société
 class AddCompteurView(generics.CreateAPIView,generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     serializer_class = CompteurSerializer
     def get_queryset(self):
         return Compteur.objects.all()
@@ -67,6 +88,9 @@ class AddCompteurView(generics.CreateAPIView,generics.ListAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 #Obtenir la liste des compteurs par Société
 class CompteurListView(generics.ListAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     serializer_class = CompteurSerializer
 
     def get_queryset(self):
@@ -84,6 +108,8 @@ class CompteurListByCompte(generics.ListAPIView):
         return queryset
 #Obtenir le prix d'un contrat d'énergie
 class PrixContratView(generics.ListAPIView):
+   authentication_classes = [TokenAuthentication]
+   permission_classes = [IsAuthenticated]
    def get(self, request, *args, **kwargs):
         siret = kwargs.get('siret')
         num_compteur = kwargs.get('num_compteur')
@@ -94,7 +120,7 @@ class PrixContratView(generics.ListAPIView):
         # retrieve the relevant objects from the database
         compteur = get_object_or_404(Compteur, societe__siret=siret, num_compteur=num_compteur, type_energie=type_energie)
         if type_energie == 'Gaz':
-            contrat = get_object_or_404(Dynef, date_debut__lte=date_debut, date_fin__gte=date_fin)
+            contrat = get_object_or_404(Dyneff, date_debut__lte=date_debut, date_fin__gte=date_fin)
         elif type_energie == 'ELEC':
             contrat = get_object_or_404(TotalEnergie, date_debut__lte=date_debut, date_fin__gte=date_fin)
 
@@ -104,13 +130,15 @@ class PrixContratView(generics.ListAPIView):
         # store the calculation result in the database
         historique = HistoriqueCalcul.objects.create(dateToday=datetime.now().date(), result=prix_contrat)
         if type_energie == 'Gaz':
-            historique.dynef = contrat
+            historique.dyneff = contrat
         elif type_energie == 'ELEC':
             historique.total_energie = contrat
         historique.save()
 
         return JsonResponse({'prix_contrat': prix_contrat})
 class TotalEnergieImportView(generics.CreateAPIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     serializer_class = TotalEnergieSerializer
 
     def post(self, request, format=None):
@@ -122,7 +150,8 @@ class TotalEnergieImportView(generics.CreateAPIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class DynefImportView(APIView):
-   
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
     def post(self, request, format=None):
         file = request.FILES.get('file')
         if file is None:
@@ -135,3 +164,30 @@ class DynefImportView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         return Response({'success': 'File imported successfully.'}, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    def post(self, request):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        
+        compte = authenticate(email=email, password=password)
+        if compte:
+            token, created = Token.objects.get_or_create(user=compte)
+            return Response({
+                'token': token.key,
+                'user': {
+                    'email': compte.email,
+                    'nom': compte.nom,
+                    'prenom': compte.prenom
+                }
+            })
+        else:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+class CustomLogout(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.auth_token.delete()
+        return Response({'detail': 'Successfully logged out.'},status=status.HTTP_200_OK)
